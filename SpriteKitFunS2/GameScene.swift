@@ -16,6 +16,7 @@ class GameScene: SKScene {
     var background = SKSpriteNode()
     var spike = SKSpriteNode()
     var floor = SKSpriteNode()
+    var ceiling = SKSpriteNode()
     
     override func didMove(to view: SKView) {
         // recall a SKView can show one or more SKScenes
@@ -53,9 +54,21 @@ class GameScene: SKScene {
         // we don't want our floor to fall according gravity
         floor.physicsBody?.isDynamic = false
         addChild(floor)
+        
+        // task: add a timer that every 3 seconds has a basketball fly across the screen
+        ceiling = SKSpriteNode(color: .blue, size: CGSize(width: self.frame.width, height: 100.0))
+        ceiling.position = CGPoint(x: self.frame.midX, y: self.frame.maxY - ceiling.size.height / 2)
+        ceiling.physicsBody = SKPhysicsBody(rectangleOf: ceiling.size)
+        // we don't want our floor to fall according gravity
+        ceiling.physicsBody?.isDynamic = false
+        addChild(ceiling)
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        // apply an impulse in the Y direction to spike when the user touches
+        // the screen
+        spike.physicsBody?.applyImpulse(CGVector(dx: 0, dy: 500))
+        // task: add a ceiling so spike can't fly off the top of the screen
         
     }
     
