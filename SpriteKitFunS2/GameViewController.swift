@@ -14,6 +14,11 @@ class GameViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        // MARK: - Views, Scenes, Nodes
+        // a SKView shows one or more SKScenes
+        // a SKScene shows one or more SKNodes
+        // examples: SKLabelNode, SKShapeNode, SKSpriteNode
+        
         if let view = self.view as! SKView? {
             // Load the SKScene from 'GameScene.sks'
             if let scene = SKScene(fileNamed: "GameScene") {
