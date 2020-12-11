@@ -8,7 +8,7 @@
 import SpriteKit
 import GameplayKit
 
-class GameScene: SKScene {
+class GameScene: SKScene, SKPhysicsContactDelegate {
     // a SKScene can have a .sks file
     // when you open a .sks file you can edit your scene
     // with the Scene Editor
@@ -20,11 +20,23 @@ class GameScene: SKScene {
     
     var timer: Timer? = nil
     
+    enum NodeCategory: UInt32 {
+        // one category for each sprite that can come into contact/collide with other sprites
+        // assign a unique power of two for each category
+        // because these serves as "masks" for bitwise and-ing and or-ing later
+        case spike = 1 // 0001
+        case floorCeiling = 2 // 0010
+        case basketball = 4 // 0100
+        case football = 8 // 1000
+    }
+    
     override func didMove(to view: SKView) {
         // recall a SKView can show one or more SKScenes
         // this method is like viewDidLoad()
         // it is called when the "view moves to" this scene
         // put our init code here
+        
+        self.physicsWorld.contactDelegate = self
         
         // explore our coordinate system
         print("Frame width: \(self.frame.width) height: \(self.frame.height)")
@@ -47,6 +59,11 @@ class GameScene: SKScene {
         // our scene already has a "physics world"
         // we need to add physics bodies to our sprites so they can interact with each other and their physics world
         spike.physicsBody = SKPhysicsBody(circleOfRadius: spike.size.height / 2)
+        spike.physicsBody?.categoryBitMask = NodeCategory.spike.rawValue
+        // spike can contact with basketballs and footballs
+        spike.physicsBody?.contactTestBitMask = NodeCategory.basketball.rawValue | NodeCategory.football.rawValue
+        // spike still collides with the floor/ceiling
+        spike.physicsBody?.collisionBitMask = NodeCategory.floorCeiling.rawValue
         addChild(spike)
         
         // we need to add a "floor" so that spike doesn't fall to oblivion
@@ -55,6 +72,7 @@ class GameScene: SKScene {
         floor.physicsBody = SKPhysicsBody(rectangleOf: floor.size)
         // we don't want our floor to fall according gravity
         floor.physicsBody?.isDynamic = false
+        floor.physicsBody?.categoryBitMask = NodeCategory.floorCeiling.rawValue
         addChild(floor)
         
         ceiling = SKSpriteNode(color: .blue, size: CGSize(width: self.frame.width, height: 100.0))
@@ -62,6 +80,7 @@ class GameScene: SKScene {
         ceiling.physicsBody = SKPhysicsBody(rectangleOf: ceiling.size)
         // we don't want our floor to fall according gravity
         ceiling.physicsBody?.isDynamic = false
+        ceiling.physicsBody?.categoryBitMask = NodeCategory.floorCeiling.rawValue
         addChild(ceiling)
         
         // task: add a timer that every 3 seconds has a basketball fly across the screen
@@ -88,6 +107,8 @@ class GameScene: SKScene {
         ball.position = CGPoint(x: self.frame.maxX + ball.size.width / 2, y: randY)
         ball.physicsBody = SKPhysicsBody(circleOfRadius: ball.size.width / 2)
         ball.physicsBody?.affectedByGravity = false
+        ball.physicsBody?.categoryBitMask = NodeCategory.basketball.rawValue
+        ball.physicsBody?.contactTestBitMask = NodeCategory.spike.rawValue
         
         // 2. animate the ball so it flies from right to left across the screen
         // use a SKAction to setup an animation
@@ -98,7 +119,25 @@ class GameScene: SKScene {
         let flyAnimation = SKAction.sequence([moveLeft, removeBall])
         ball.run(flyAnimation)
         
+        // 3. animate the ball so it rotates as it flies
+        let rotateBall = SKAction.rotate(byAngle: 2 * CGFloat.pi, duration: 1)
+        let rotateBallForever = SKAction.repeatForever(rotateBall)
+        ball.run(rotateBallForever)
+        
+        // 4. set up contacts and collisions (e.g. spike contacts with a ball, spike collides with the floor/ceiling, etc.)
+        // contact: when two sprites touch, but no physics should occur
+        // collision: when two sprites touch, but they should not intersect, meaning physics should take over
+        // set up delegation for a callback to execute when the contact intersection occurs
+        
         addChild(ball)
+    }
+    
+    func didBegin(_ contact: SKPhysicsContact) {
+        // called when two sprites contact
+        // the two bodies, bodyA and bodyB, there is no guarantee on the order
+        if contact.bodyA.categoryBitMask == NodeCategory.basketball.rawValue || contact.bodyB.categoryBitMask == NodeCategory.basketball.rawValue {
+            print("spike has come into contact with a basketball")
+        }
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
