@@ -18,6 +18,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     var floor = SKSpriteNode()
     var ceiling = SKSpriteNode()
     
+    var scoreLabel = SKLabelNode()
+    var score = 0 {
+        didSet {
+            scoreLabel.text = "Score: \(score)"
+        }
+    }
+    
     var timer: Timer? = nil
     
     enum NodeCategory: UInt32 {
@@ -83,6 +90,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         ceiling.physicsBody?.categoryBitMask = NodeCategory.floorCeiling.rawValue
         addChild(ceiling)
         
+        // setup score label
+        scoreLabel.fontSize = 50
+        scoreLabel.position = CGPoint(x: ceiling.position.x, y: ceiling.position.y - 20)
+        score = 0 // force an update of the label text
+        addChild(scoreLabel)
+        
+        
         // task: add a timer that every 3 seconds has a basketball fly across the screen
         timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true, block: { (timer) in
             self.addBall()
@@ -137,6 +151,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // the two bodies, bodyA and bodyB, there is no guarantee on the order
         if contact.bodyA.categoryBitMask == NodeCategory.basketball.rawValue || contact.bodyB.categoryBitMask == NodeCategory.basketball.rawValue {
             print("spike has come into contact with a basketball")
+            // remove the basketball from the scene
+            contact.bodyA.categoryBitMask == NodeCategory.basketball.rawValue ? contact.bodyA.node?.removeFromParent() : contact.bodyB.node?.removeFromParent()
+            // add a score label and one to the score for every caught basketball
+            score += 1
+            // (task 5) add footballs
+            // when spike comes into contact with a football, its game over! add game over logic: pause the game, invalidate the timer, show the play again sprite
+            // when the user taps to play again, remove/reset all the nodes, unpause the game, start the timer
+            // add sound for when spike catches the balls
         }
     }
     
