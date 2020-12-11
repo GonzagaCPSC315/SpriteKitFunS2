@@ -4,6 +4,7 @@
 //
 //  Created by Gina Sprint on 12/7/20.
 //
+// bounce sound from: http://soundbible.com/1626-Ball-Bounce.html
 
 import SpriteKit
 import GameplayKit
@@ -17,6 +18,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     var spike = SKSpriteNode()
     var floor = SKSpriteNode()
     var ceiling = SKSpriteNode()
+    var play = SKSpriteNode()
     
     var scoreLabel = SKLabelNode()
     var score = 0 {
@@ -26,6 +28,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     var timer: Timer? = nil
+    var counter = 0
     
     enum NodeCategory: UInt32 {
         // one category for each sprite that can come into contact/collide with other sprites
@@ -51,6 +54,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         print("minY: \(self.frame.minY) maxY: \(self.frame.maxY)")
         print("midX: \(self.frame.midX) midY: \(self.frame.midY)")
 
+        startGame()
+    }
+    
+    func setupInitialNodes() {
         // let's add a background sprite that shows the "court" image texture
         background = SKSpriteNode(imageNamed: "court")
         background.size = CGSize(width: self.frame.width, height: self.frame.height)
@@ -96,14 +103,30 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         score = 0 // force an update of the label text
         addChild(scoreLabel)
         
-        
+        // setup our play again sprite
+        play = SKSpriteNode(imageNamed: "play")
+        play.size = CGSize(width: 200, height: 200)
+        play.zPosition = 1
+        play.isHidden = true
+        addChild(play)
+    }
+    
+    func setupTimer() {
         // task: add a timer that every 3 seconds has a basketball fly across the screen
         timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true, block: { (timer) in
-            self.addBall()
+            // every 3rd ball will be a football
+            self.counter += 1
+            if self.counter == 3 {
+                self.addBall(name: "football")
+                self.counter = 0
+            }
+            else {
+                self.addBall(name: "basketball")
+            }
         })
     }
     
-    func addBall() {
+    func addBall(name: String) {
         // game plan
         // 1. create a ball sprite
         // 2. animate the ball so it flies from right to left across the screen
@@ -112,7 +135,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         // 5. add footballs
         
         // 1. create a ball sprite
-        let ball = SKSpriteNode(imageNamed: "basketball")
+        let ball = SKSpriteNode(imageNamed: name)
         ball.size = CGSize(width: 125, height: 125)
         // position x: start off screen to the right, y: random value for y that does not overlap with floor or ceiling
         let minRandY = Int(self.frame.minY + floor.size.height + ball.size.height / 2)
@@ -121,7 +144,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         ball.position = CGPoint(x: self.frame.maxX + ball.size.width / 2, y: randY)
         ball.physicsBody = SKPhysicsBody(circleOfRadius: ball.size.width / 2)
         ball.physicsBody?.affectedByGravity = false
-        ball.physicsBody?.categoryBitMask = NodeCategory.basketball.rawValue
+        if name == "basketball" {
+            ball.physicsBody?.categoryBitMask = NodeCategory.basketball.rawValue
+        }
+        else {
+            // football
+            ball.physicsBody?.categoryBitMask = NodeCategory.football.rawValue
+        }
         ball.physicsBody?.contactTestBitMask = NodeCategory.spike.rawValue
         
         // 2. animate the ball so it flies from right to left across the screen
@@ -156,18 +185,46 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             // add a score label and one to the score for every caught basketball
             score += 1
             // (task 5) add footballs
-            // when spike comes into contact with a football, its game over! add game over logic: pause the game, invalidate the timer, show the play again sprite
-            // when the user taps to play again, remove/reset all the nodes, unpause the game, start the timer
             // add sound for when spike catches the balls
+            let ballBounceSound = SKAction.playSoundFileNamed("bounce.mp3", waitForCompletion: false)
+            spike.run(ballBounceSound)
+        }
+        
+        // when spike comes into contact with a football, its game over! add game over logic: pause the game, invalidate the timer, show the play again sprite
+        // when the user taps to play again, remove/reset all the nodes, unpause the game, start the timer
+        if contact.bodyA.categoryBitMask == NodeCategory.football.rawValue || contact.bodyB.categoryBitMask == NodeCategory.football.rawValue {
+            print("spike has come into contact with a football")
+            // it's game over!!
+            gameOver()
         }
     }
     
+    func startGame() {
+        self.removeAllChildren()
+        setupInitialNodes()
+        isPaused = false
+        setupTimer()
+    }
+    
+    func gameOver() {
+        self.isPaused = true
+        timer?.invalidate()
+        timer = nil
+        // show our play again sprite
+        play.isHidden = false 
+    }
+    
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        // apply an impulse in the Y direction to spike when the user touches
-        // the screen
-        spike.physicsBody?.applyImpulse(CGVector(dx: 0, dy: 500))
-        // task: add a ceiling so spike can't fly off the top of the screen
-        
+        if self.isPaused == true {
+            // the user tapped to start a new game
+            startGame()
+        }
+        else {
+            // apply an impulse in the Y direction to spike when the user touches
+            // the screen
+            spike.physicsBody?.applyImpulse(CGVector(dx: 0, dy: 500))
+            // task: add a ceiling so spike can't fly off the top of the screen
+        }
     }
     
     override func update(_ currentTime: TimeInterval) {
