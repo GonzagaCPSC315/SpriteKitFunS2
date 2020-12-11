@@ -18,6 +18,8 @@ class GameScene: SKScene {
     var floor = SKSpriteNode()
     var ceiling = SKSpriteNode()
     
+    var timer: Timer? = nil
+    
     override func didMove(to view: SKView) {
         // recall a SKView can show one or more SKScenes
         // this method is like viewDidLoad()
@@ -55,13 +57,48 @@ class GameScene: SKScene {
         floor.physicsBody?.isDynamic = false
         addChild(floor)
         
-        // task: add a timer that every 3 seconds has a basketball fly across the screen
         ceiling = SKSpriteNode(color: .blue, size: CGSize(width: self.frame.width, height: 100.0))
         ceiling.position = CGPoint(x: self.frame.midX, y: self.frame.maxY - ceiling.size.height / 2)
         ceiling.physicsBody = SKPhysicsBody(rectangleOf: ceiling.size)
         // we don't want our floor to fall according gravity
         ceiling.physicsBody?.isDynamic = false
         addChild(ceiling)
+        
+        // task: add a timer that every 3 seconds has a basketball fly across the screen
+        timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true, block: { (timer) in
+            self.addBall()
+        })
+    }
+    
+    func addBall() {
+        // game plan
+        // 1. create a ball sprite
+        // 2. animate the ball so it flies from right to left across the screen
+        // 3. animate the ball so it rotates as it flies
+        // 4. set up contacts and collisions (e.g. spike contacts with a ball, spike collides with the floor/ceiling, etc.)
+        // 5. add footballs
+        
+        // 1. create a ball sprite
+        let ball = SKSpriteNode(imageNamed: "basketball")
+        ball.size = CGSize(width: 125, height: 125)
+        // position x: start off screen to the right, y: random value for y that does not overlap with floor or ceiling
+        let minRandY = Int(self.frame.minY + floor.size.height + ball.size.height / 2)
+        let maxRandY = Int(self.frame.maxY - ceiling.size.height - ball.size.height / 2)
+        let randY = CGFloat(Int.random(in: minRandY...maxRandY))
+        ball.position = CGPoint(x: self.frame.maxX + ball.size.width / 2, y: randY)
+        ball.physicsBody = SKPhysicsBody(circleOfRadius: ball.size.width / 2)
+        ball.physicsBody?.affectedByGravity = false
+        
+        // 2. animate the ball so it flies from right to left across the screen
+        // use a SKAction to setup an animation
+        let moveLeft = SKAction.move(to: CGPoint(x: self.frame.minX - ball.size.width / 2, y: randY), duration: 2)
+        // when the ball is off screen, we need to remove it from the scene
+        let removeBall = SKAction.removeFromParent()
+        // put 'em together
+        let flyAnimation = SKAction.sequence([moveLeft, removeBall])
+        ball.run(flyAnimation)
+        
+        addChild(ball)
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
